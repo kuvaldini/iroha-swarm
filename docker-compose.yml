@@ -2,12 +2,12 @@ version: "2.4"
 
 services:
   iroha_tech_10001: &service_iroha_tech
-    image: ${IROHA_IMAGE}
+    image: ${IROHA_IMAGE:-hyperledger/iroha}
     container_name: iroha_4-1
     ports:
-      - 10001:10001
-      - 50051:50051
-      - 55552:55552
+      - 10001:10001  ## 
+      - 50051:50051  ## Internal port
+      - 55552:55552  ## TLS port
       - 9090:9090
       - 5551:5551  ## Metrics
     expose: 
@@ -48,7 +48,7 @@ services:
         max-size: "1000m"
         max-file: "5"
     restart: always
-    command: "${IROHA_COMMAND}"  ## Taken from file .env
+    command: "${IROHA_COMMAND}"  ## Taken from file .env  
     # command: "--drop_state --overwrite_ledger --verbosity=trace"
 
   iroha_tech_10002:
