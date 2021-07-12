@@ -156,8 +156,8 @@ echo "${peers:=}," | while IFS=: read -d, host port pubkey rest ;do
       #fatalerr "Key must be set not empty"
       pubkey=${PUB_KEYS[$((i-1))]}
       echonote "Peer's $i pubkey was not set, using from default pool '$pubkey'"
-      echo "$pubkey" >iroha$i.pub
-      echo "${PRIV_KEYS[$((i-1))]}" >iroha$i.priv
+      echo -n "$pubkey" >iroha$i.pub
+      echo -n "${PRIV_KEYS[$((i-1))]}" >iroha$i.priv
    } || {
       test ${#pubkey} -eq 64 || fatalerr "Peer's $i pubkey length must be 64, got ${#pubkey} in '$pubkey'"
    }
