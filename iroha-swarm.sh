@@ -9,9 +9,9 @@ readonly script_dir=$(dirname $(realpath "$0"))
 VERSION=UNKNOWN
 VERSION_NPM=0.0.0
 
-function echomsg      { echo $'\e[1;37m'"$@"$'\e[0m'; }
+function echomsg      { echo $'\e[0;37m'"$@"$'\e[0m'; }
 # alias echoinfo=echomsg
-function echonote { >&2 echo $'\e[1;37m'NOTE$'\e[0m' "$@"; }
+function echonote { >&2 echo $'\e[0;37m'NOTE$'\e[0m' "$@"; }
 function echodbg  { >&2 echo $'\e[0;36m'"$@"$'\e[0m'; }
 function echowarn { >&2 echo $'\e[0;33m'WARNING$'\e[0m' "$@"; }
 function echoerr  { >&2 echo $'\e[0;31m'ERROR$'\e[0m' "$@"; }
@@ -94,6 +94,9 @@ while [[ $# > 0 ]] ;do
    case $1 in
       --peers=*)
          set_with_warn peers "${1##--peers=}" ;;
+      -f|--force)
+         force=yes
+         ;;
       -x|--trace|--xtrace)
          # PS4=$'\e[32m+ '
          set -x;
@@ -158,7 +161,7 @@ echo "${peers:=}," | while IFS=: read -d, host port pubkey rest ;do
    } || {
       test ${#pubkey} -eq 64 || fatalerr "Peer's $i pubkey length must be 64, got ${#pubkey} in '$pubkey'"
    }
-   echo "$host $port $pubkey"
+   # echo "$host:$port $pubkey"
    JSON_peers+="$comma {addPeer:{peer:{address:\"$host:$port\",peerKey:\"$pubkey\"}}}"
    comma=,
 
@@ -187,11 +190,12 @@ services:
    ## replace anchors because yq Error: yaml: unknown anchor 'service_iroha_tech' referenced
    sed -i 's,<<: service_iroha_tech,<<: *service_iroha_tech,' docker-compose.yaml
 
-   echo ------------------ $i
-
    ((++i))
 done
 
 cat $script_dir/genesis.base.block | 
    jq ".block_v1.payload.transactions[0].payload.reducedPayload.commands += [$JSON_peers]" \
    > genesis.block
+
+echomsg "$peers_count nodes ready to run. Next do:
+  docker compose up"
