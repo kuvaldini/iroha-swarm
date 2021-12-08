@@ -1,1 +1,10 @@
 .DS_Store
+
+iroha*.priv
+iroha*.pub
+iroha*.config
+iroha*.log
+genesis.block
+docker-compose.yaml
+
+!iroha.base.config

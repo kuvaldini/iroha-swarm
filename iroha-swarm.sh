@@ -58,7 +58,6 @@ function --help {
 'ToDo
 
 USAGE:
-   iroha-swarm.sh  default 4 noodes
    iroha-swarm.sh [--help|-h|-?]
    iroha-swarm.sh [--version|-V]
    iroha-swarm.sh --peers=
@@ -84,19 +83,33 @@ function --rev-label {
 --npm-version(){ --version-npm "$@"; }
 
 set_with_warn(){
-   varname=$1
+   local varname=$1
    shift
    var_is_set $varname  && echowarn "!!! $varname already set to '${!varname}'. Overriding"
    declare -g $varname="$@"
+}
+set_with_warn_from_arg(){
+   local varname=${1%%=*}; varname=${varname#--}
+   var_is_set $varname  && echowarn "!!! $varname already set to '${!varname}'. Overriding"
+   declare -g $varname="${1#*=}"
+}
+test_var_equals(){
+   declare -n var=$1
+   shift
+   test "${var:-}" = "$@"
+}
+test_yes(){
+   test_var_equals $1 yes
 }
 
 while [[ $# > 0 ]] ;do
    case $1 in
       --peers=*)
          set_with_warn peers "${1##--peers=}" ;;
-      -f|--force)
-         force=yes
-         ;;
+      --base_torii_port=*)
+         set_with_warn_from_arg "$1" ;;
+      -l|--local|--localhost|--no-docker|--without-docker)
+         localhost=yes ;;
       -x|--trace|--xtrace)
          # PS4=$'\e[32m+ '
          set -x;
@@ -142,60 +155,109 @@ var_is_unset_or_empty peers && for (( i=1; i<$peers_count; ++i )); do
    peers+=,
 done
 
-cp $script_dir/docker-compose.base.yml docker-compose.yaml
+if ! test_yes localhost ;then
+   cp $script_dir/docker-compose.base.yml docker-compose.yaml
+fi
 
 ## Parse peers and fill files
 comma=
+peers_out=
 declare -i i=1
 echo "${peers:=}," | while IFS=: read -d, host port pubkey rest ;do
    [[ -n "$rest" ]] && fatalerr "Unexpected rest '$rest'"
-   host=${host:=iroha$i}
-   port=${port:=10001} #$((10000+$i))}
-   printf %d "$port" &>/dev/null && ((port>0 && port<=65535)) || fatalerr "Peer's $i port must be non-zero 16bit number, got '$port'"
+   ## Localhost uses different ports and paths, different hosts (docker containers) uses same ports and paths
+   if test_yes localhost ;then
+      host=localhost
+      postgres_host=localhost
+      block_store_path=/tmp/block_store_$i
+      config_torii_port=$((50050+i))
+      config_internal_port=$((10000+i))
+      config_metrics_port=7001
+      config_metrics="0.0.0.0:$config_metrics_port"
+   else
+      host=${host:=iroha$i}
+      postgres_host=irpsql
+      block_store_path=/tmp/block_store
+      config_torii_port=50051
+      config_internal_port=10001
+      config_metrics_port=7001
+      config_metrics="0.0.0.0:$config_metrics_port"
+      host_internal_port=${base_internal_port:-10000}
+      host_torii_port=${base_torii_port:-50050}; 
+      host_metrics_port=${base_metrics_port:-6500}
+   fi
+   
+   if ! printf %d "$config_internal_port" &>/dev/null && 
+      ((config_internal_port>0 && config_internal_port<=65535))
+   then fatalerr "Peer's $i port must be non-zero 16bit number, got '$config_internal_port'"
+   fi
+   
    var_is_unset_or_empty pubkey && {
       #fatalerr "Key must be set not empty"
       pubkey=${PUB_KEYS[$((i-1))]}
-      echonote "Peer's $i pubkey was not set, using from default pool '$pubkey'"
+      #echo "Note: Peer's $i pubkey was not set, using from default pool '$pubkey'"
       echo -n "$pubkey" >iroha$i.pub
       echo -n "${PRIV_KEYS[$((i-1))]}" >iroha$i.priv
-   } || {
-      test ${#pubkey} -eq 64 || fatalerr "Peer's $i pubkey length must be 64, got ${#pubkey} in '$pubkey'"
    }
-   # echo "$host:$port $pubkey"
-   JSON_peers+="$comma {addPeer:{peer:{address:\"$host:$port\",peerKey:\"$pubkey\"}}}"
+   test ${#pubkey} -eq 64 || fatalerr "Peer's $i pubkey length must be 64, got ${#pubkey} in '$pubkey'"
+
+   peers_out+="$host:$config_internal_port $pubkey,"
+   # echo "$i: $host:$config_internal_port $pubkey"
+   JSON_peers+="$comma {addPeer:{peer:{address:\"$host:$config_internal_port\",peerKey:\"$pubkey\"}}}"
    comma=,
 
+   # pgopt="$( cat iroha.base.config | jq -r .pg_opt | 
+   #    sed -E 's,dbname=[A-Za-z_0-9]+,dbname=$pgopt_dbname,g' )"
    cat $script_dir/iroha.base.config | 
-      jq ".pg_opt=\"dbname=iroha$i host=irpsql port=5432 user=postgres password=postgres\"" \
+      jq ".pg_opt=\"dbname=iroha$i host=$postgres_host port=5432 user=postgres password=postgres\" |
+          .block_store_path=\"$block_store_path\" | 
+          .torii_port=$config_torii_port | 
+          .internal_port=$config_internal_port | 
+          .metrics=\"$config_metrics\" " \
       >iroha$i.config
    
-   yaml="
-services:
-   iroha$i:
-      <<: service_iroha_tech
-      container_name: iroha$i
-      ports:
-      - $((10000+$i)):10001
-      - $((50050+$i)):50051
-      - $((5550+$i)):5551  ## Metrics
-      volumes:
-      - block_strore_$i:/tmp/block_store
-      - ./genesis.block:/opt/iroha_data/genesis.block
-      - ./iroha$i.config:/opt/iroha_data/config.docker
-      - ./iroha$i.priv:/opt/iroha_data/iroha.tech.priv
-      - ./iroha$i.pub:/opt/iroha_data/iroha.tech.pub
-      - iroha-dev:/opt/iroha" \
-   yq e 'select(fileIndex == 0) * env(yaml)' -i docker-compose.yaml
-
-   ## replace anchors because yq Error: yaml: unknown anchor 'service_iroha_tech' referenced
-   sed -i 's,<<: service_iroha_tech,<<: *service_iroha_tech,' docker-compose.yaml
+   if ! test_yes localhost ;then
+      base_internal_port=${base_internal_port:-10000}
+      base_torii_port=${base_torii_port:-50050}; 
+      base_metrics_port=${base_metrics_port:-6500}
+      yaml="
+         x-workaround: &service_iroha_tech  ## See https://github.com/mikefarah/yq/issues/889#issuecomment-877728821
+         services:
+            iroha$i:
+               <<: *service_iroha_tech
+               container_name: iroha$i
+               ports:
+               #- $((base_internal_port+i)):$config_internal_port
+               - $((base_torii_port+i)):$config_torii_port
+               - $((base_metrics_port+i)):$config_metrics_port  ## Metrics
+               volumes:
+               - block_strore_$i:/tmp/block_store
+               - ./genesis.block:/opt/iroha_data/genesis.block
+               - ./iroha$i.config:/opt/iroha_data/config.docker
+               - ./iroha$i.priv:/opt/iroha_data/iroha.tech.priv
+               - ./iroha$i.pub:/opt/iroha_data/iroha.tech.pub
+               - iroha-dev:/opt/iroha" \
+      yq e 'select(fileIndex == 0) * env(yaml) | del(.x-workaround)' -i docker-compose.yaml
+   fi
 
    ((++i))
 done
 
+echo "$peers_count nodes ready to run:"
+declare -i i=
+echo "$peers_out" | while IFS=: read -d, host port pubkey rest ;do
+   echo "  $((++i)). $host:$port $pubkey"
+   # JSON_peers+="$comma {addPeer:{peer:{address:\"$host:$config_internal_port\",peerKey:\"$pubkey\"}}}"
+   # comma=,
+done
 cat $script_dir/genesis.base.block | 
    jq ".block_v1.payload.transactions[0].payload.reducedPayload.commands += [$JSON_peers]" \
    > genesis.block
 
-echomsg "$peers_count nodes ready to run. Next do:
-  docker compose up"
+echo "Next do:"
+if ! test_yes localhost ;then
+   echo "   env IROHA_IMAGE=hyperledger/iroha:latest docker-compose up --force-recreate"
+else
+   cp "$script_dir"/run-irohas.sh ./
+   echo "   env IROHAD=/path/to/irohad ./run-irohas.sh"
+fi

@@ -5,9 +5,9 @@ x-iroha-base: &service_iroha_tech
   # container_name: iroha-base
   ports:
     - 50051:50051  ## TORII port
-    - 10001:10001  ## Internal port
-    - 55552:55552  ## TLS port
-    - 9090:9090
+    #- 10001:10001  ## Internal port
+    #- 55552:55552  ## Torii TLS port
+    #- 9090:9090
     - 5551:5551  ## Metrics
   expose: 
     - 10001
