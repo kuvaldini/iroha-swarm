@@ -1,0 +1,166 @@
+x-iroha-base: &service_iroha_tech
+  image: ${IROHA_IMAGE} #:-hyperledger/iroha}
+  # container_name: iroha-base
+  ports:
+    - 50051:50051 ## TORII port
+    #- 10001:10001  ## Internal port
+    #- 55552:55552  ## Torii TLS port
+    #- 9090:9090
+    - 5551:5551 ## Metrics
+  expose:
+    - 10001
+    - 50051
+    - 55552
+    - 5551
+  environment: &iroha_tech_env
+    KEY: iroha.tech
+    IROHA_POSTGRES_HOST: irpsql
+    # IROHA_POSTGRES_DATABASE: iroha_001
+    # IROHA_CRYPTO_PROVIDERS_0_TYPE: default
+    # IROHA_VOTE_DELAY: 5000
+    # IROHA_MAX_PROPOSAL_SIZE: 10000
+    # IROHA_CRYPTO_PROVIDERS_0_CRYPTO_TYPE: ed25519_sha3_256
+    # IROHA_CRYPTO_PROVIDERS_0_KEY: p1
+    # IROHA_MST_EXPIRATION_TIME: 1440
+    # IROHA_PG_OPT: dbname=iroha_001 host=iroha-postgres port=5432 user=postgres password=postgres
+    # IROHA_MAX_ROUNDS_DELAY: 10000
+    # IROHA_BLOCK_STORE_PATH: /tmp/block_store/
+    # IROHA_MST_ENABLE: true
+    # IROHA_CRYPTO_PROVIDERS_0_PRIVATE_KEY: cc5013e43918bd0e5c4d800416c88bed77892ff077929162bb03ead40a745e88
+    # IROHA_TORII_PORT: 50051
+    # IROHA_INTERNAL_PORT: 10001
+    # IROHA_PROPOSAL_DELAY: 1
+    # IROHA_CRYPTO_SIGNER: p1
+  volumes:
+    - block_strore_1:/tmp/block_store
+    - ./genesis-1.block:/opt/iroha_data/genesis.block
+    - ./iroha-common-config.json:/opt/iroha_data/config.docker
+    - ./keys/iroha.tech.001.priv:/opt/iroha_data/iroha.tech.priv
+    - ./keys/iroha.tech.001.pub:/opt/iroha_data/iroha.tech.pub
+    - iroha-dev:/opt/iroha
+  depends_on:
+    - irpsql
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "1000m"
+      max-file: "5"
+  # restart: always
+  command: "${IROHA_COMMAND}" ## Taken from file .env  
+  ## debugging
+  ulimits:
+    core: -1
+  cap_add:
+    - SYS_PTRACE
+    # entrypoint: bash
+    # command: ''
+services: ## See https://github.com/mikefarah/yq/issues/889#issuecomment-877728821
+  irpsql:
+    image: postgres:11.6
+    container_name: irpsql
+    healthcheck:
+      test: pg_isready -U postgres
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 300s
+    environment:
+      POSTGRES_PASSWORD: postgres
+    expose:
+      - 5432
+    ports:
+      - 65432:5432 ## to be able to debug
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # networks:
+    #   - iroha-net
+    restart: always
+    command: "postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all -c max_connections=200"
+    # metrics:
+    #   image: prometheus
+    #   ports: 
+    #     - 8090:8090
+    #   volumes:
+    #     - iroha_prometheus_data:/opt/data
+    #   networks:
+    #     - iroha-net
+    #   restart: always
+  ## To be used as following
+  ##    docker compose run all-volumes ls -l /tmp/block_store_1/
+  # all-volumes:
+  #   image: ubuntu
+  #   container_name: iroha-volumes
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #     - block_strore_1:/tmp/block_store_1
+  #     - block_strore_2:/tmp/block_store_2
+  #     - block_strore_3:/tmp/block_store_3
+  #     - block_strore_4:/tmp/block_store_4
+  #   stdin_open: true # docker run -i
+  #   tty: true        # docker run -t
+
+  iroha1:
+    <<: *service_iroha_tech
+    container_name: iroha1
+    ports:
+      #- 10001:10001
+      - 61001:50051
+      - 6501:7001 ## Metrics
+    volumes:
+      - block_strore_1:/tmp/block_store
+      - ./genesis.block:/opt/iroha_data/genesis.block
+      - ./iroha1.config:/opt/iroha_data/config.docker
+      - ./iroha1.priv:/opt/iroha_data/iroha.tech.priv
+      - ./iroha1.pub:/opt/iroha_data/iroha.tech.pub
+      - iroha-dev:/opt/iroha
+  iroha2:
+    <<: *service_iroha_tech
+    container_name: iroha2
+    ports:
+      #- 10002:10001
+      - 61002:50051
+      - 6502:7001 ## Metrics
+    volumes:
+      - block_strore_2:/tmp/block_store
+      - ./genesis.block:/opt/iroha_data/genesis.block
+      - ./iroha2.config:/opt/iroha_data/config.docker
+      - ./iroha2.priv:/opt/iroha_data/iroha.tech.priv
+      - ./iroha2.pub:/opt/iroha_data/iroha.tech.pub
+      - iroha-dev:/opt/iroha
+  iroha3:
+    <<: *service_iroha_tech
+    container_name: iroha3
+    ports:
+      #- 10003:10001
+      - 61003:50051
+      - 6503:7001 ## Metrics
+    volumes:
+      - block_strore_3:/tmp/block_store
+      - ./genesis.block:/opt/iroha_data/genesis.block
+      - ./iroha3.config:/opt/iroha_data/config.docker
+      - ./iroha3.priv:/opt/iroha_data/iroha.tech.priv
+      - ./iroha3.pub:/opt/iroha_data/iroha.tech.pub
+      - iroha-dev:/opt/iroha
+  iroha4:
+    <<: *service_iroha_tech
+    container_name: iroha4
+    ports:
+      #- 10004:10001
+      - 61004:50051
+      - 6504:7001 ## Metrics
+    volumes:
+      - block_strore_4:/tmp/block_store
+      - ./genesis.block:/opt/iroha_data/genesis.block
+      - ./iroha4.config:/opt/iroha_data/config.docker
+      - ./iroha4.priv:/opt/iroha_data/iroha.tech.priv
+      - ./iroha4.pub:/opt/iroha_data/iroha.tech.pub
+      - iroha-dev:/opt/iroha
+volumes:
+  postgres_data:
+  block_strore_1:
+  block_strore_2:
+  block_strore_3:
+  block_strore_4:
+  iroha_prometheus_data:
+  iroha-dev:
+    external: true

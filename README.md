@@ -1,5 +1,5 @@
 # iroha-swarm
-Create configuration files for docker-compose to spawn a number of iroha nodes.
+Create configuration files for docker-compose to spawn a number of Iroha nodes.
 
 ## Common use cases
 Generate and run iroha network of 4 nodes inside docker containers using auto-generated keys.
@@ -23,10 +23,24 @@ postgres -D/path/to/db
 env IROHAD=/path/to/irohad ./run-irohas.sh 2
 ```
 
+## The output
+`iroha-swarm` generates `docker-compose.yaml`, `genesis.block`, `irohaX.config`, and `irohaX.priv`,`.pub` files.
+```
+> ls
+docker-compose.yaml iroha1.config       iroha1.pub          iroha2.priv         iroha3.config       iroha3.pub          iroha4.priv
+genesis.block       iroha1.priv         iroha2.config       iroha2.pub          iroha3.priv         iroha4.config       iroha4.pub
+```
+
+`iroha-swarm --localhost` generates `run-irohas.sh`, `genesis.block`, `irohaX.config`, and `irohaX.priv`,`.pub` files.
+
+
+
 ## TODO
 * rocksdb
 * assert works fine --local
 * docker-compose.yml:volumes: auto-extend
+
+## Hints
 
 ### Initialize local Postgres database
 When use `iroha-swarm --without-docker`
@@ -36,7 +50,7 @@ postgres -D/path/to/db
 ```
 optional arguments `-d1` to debug and `-p5432` to set listening port.
 
-### For usage and help see iroha-swarm.sh
+### For usage and help see [iroha-swarm.sh](./iroha-swarm.sh)
 
 ### Troubleshooting
 If you got unexpected behaivor or error please clean up containers and volumes. See [`./clean-start.sh`](./clean-start.sh).
