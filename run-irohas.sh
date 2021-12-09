@@ -9,7 +9,7 @@ shopt -s lastpipe
 # postgres -D/path/to/db &
 
 
-IROHAD=~/devel/iroha/build/bin/irohad
+IROHAD=${IROHAD:-~/devel/iroha/build/bin/irohad}
 
 COLORS=(0 39 126 184 214 141)
 NOCOLOR="$(tput sgr0)"
