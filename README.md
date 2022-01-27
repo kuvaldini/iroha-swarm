@@ -53,4 +53,5 @@ optional arguments `-d1` to debug and `-p5432` to set listening port.
 ### For usage and help see [iroha-swarm.sh](./iroha-swarm.sh)
 
 ### Troubleshooting
-If you got unexpected behaivor or error please clean up containers and volumes. See [`./clean-start.sh`](./clean-start.sh).
+If you got unexpected behaivor or error please clean up containers and volumes. See [`./clean-start.sh`](./clean-start.sh).  
+At any time you are wellcome to ask questions in [telegram chat](https://t.me/hyperledgeriroha) and on stackoverflow with tag hyperledger/iroha.
