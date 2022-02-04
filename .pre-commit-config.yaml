@@ -6,6 +6,7 @@ repos:
     entry: bash ./infra/set-version.sh #&& git add iroha-swarm.sh
     language: system
     pass_filenames: false
+    always_run: true
      #readonly VERSION=
 
 - repo: https://github.com/pre-commit/pre-commit-hooks
