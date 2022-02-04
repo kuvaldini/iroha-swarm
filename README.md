@@ -44,7 +44,7 @@ To run iroha nodes on current host do:
 ```
 
 ### For local run
-`iroha-swarm --localhost` generates `run-irohas.sh`, `genesis.block`, `irohaX.config`, and `irohaX.priv`,`.pub` files.  
+`iroha-swarm --localhost` generates `run-irohas.sh`, `genesis.block`, `irohaX.config`, and `irohaX.priv`,`.pub` files.
 stdout
 ```
 2 nodes ready to run on localhost:
@@ -57,24 +57,8 @@ To run iroha nodes in containers do:
    env IROHA_IMAGE=hyperledger/iroha:latest docker-compose up --force-recreate
 ```
 
-## TODO
-* docker-compose.yml:volumes: auto-extend
-* automated tests on GitHub Actions
-* --version with git-rev-label and pre-commit
-* rocksdb
-* add graphana and prometheus
-
-## Hints
-
-### Initialize local Postgres database
-When use `iroha-swarm --without-docker`
-```
-initdb -Upostgres /path/to/db
-postgres -D/path/to/db
-```
-optional arguments `-d1` to debug and `-p5432` to set listening port.
-
-### For usage and help see [iroha-swarm.sh](./iroha-swarm.sh)
+## Usage
+For details please review source [iroha-swarm.sh](./iroha-swarm.sh)
 ```
 iroha-swarm for hyperledger/iroha
 Produce configuration files to run Hyperledger/Iroha network of multiple instances.
@@ -98,6 +82,20 @@ OPTIONS:
    +x|--no-trace|--no-xtrace            NOT trace as bash +x
 ```
 
+## TODO
+* automated tests on GitHub Actions
+* add graphana and prometheus
+
+## Hints
+
+### Initialize local Postgres database
+When use `iroha-swarm --without-docker`
+```
+initdb -Upostgres /path/to/db
+postgres -D/path/to/db
+```
+optional arguments `-d1` to debug and `-p5432` to set listening port.
+
 ### Troubleshooting
-If you got unexpected behaivor or error please clean up containers and volumes. See [`./clean-start.sh`](./clean-start.sh).  
+If you got unexpected behaivor or error please clean up containers and volumes. See [`./clean-start.sh`](./clean-start.sh).
 At any time you are wellcome to ask questions in [telegram chat](https://t.me/hyperledgeriroha) and on stackoverflow with tag hyperledger/iroha.

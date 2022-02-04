@@ -6,8 +6,8 @@ shopt -s expand_aliases
 
 readonly script_dir=$(dirname $(realpath "$0"))
 
-readonly VERSION=master-c15-g4940cb6
-readonly VERSION_NPM=1.15.0
+readonly VERSION=master-c16-g56adb92
+readonly VERSION_NPM=1.16.0
 
 function echomsg      { echo $'\e[0;37m'"$@"$'\e[0m'; }
 # alias echoinfo=echomsg
@@ -63,19 +63,6 @@ var_is_unset_or_empty_multi(){
       fi
    done
 }
-
-function --version {
-   echo "git-rev-label v$VERSION_NPM
-   $VERSION
-   https://gitlab.com/kyb/git-rev-label"
-}
--V(){ echo "git-rev-label v$VERSION_NPM"; }
-function --rev-label {
-   echo "$VERSION"
-}
---rev(){ --rev-label "$@"; }
---version-npm(){ echo $VERSION_NPM; }
---npm-version(){ --version-npm "$@"; }
 
 set_with_warn(){
    local varname=$1
@@ -133,7 +120,7 @@ while [[ $# > 0 ]] ;do
       --base_torii_port=*)  ##                 Base Torii port to access Iroha API, default 50050
          set_with_warn_from_arg "$1" ;;
       --help)  ##                              Print this usage message
-         echo "iroha-swarm for hyperledger/iroha"
+         echo "iroha-swarm for hyperledger/iroha  $VERSION"
          echo 'Produce configuration files to run Hyperledger/Iroha network of multiple instances.'
          echo "  https://github.com/kuvaldini/iroha-swarm"
          echo 'USAGE:'
@@ -141,6 +128,12 @@ while [[ $# > 0 ]] ;do
          echo 'OPTIONS:'
          awk '/## CMDLINE OPTIONS BEGIN/{flag=1; next} /## CMDLINE OPTIONS END/{flag=0} flag' "${BASH_SOURCE[0]}" |
             sed -nE 's,^\s*([-+]+.*)\).*(##(.*)),   \1 \3,p'
+         echo "COMMUNITY SUPPORT in chat https://t.me/hyperledgeriroha"
+         echo "ISSUES https://github.com/kuvaldini/iroha-swarm/issues"
+         exit 0
+         ;;
+      --version)  ##
+         echo "iroha-swarm  $VERSION  https://github.com/kuvaldini/iroha-swarm"
          exit 0
          ;;
       -x|--trace|--xtrace)  ##                 Trace commands as bash -x
