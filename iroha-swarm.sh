@@ -6,8 +6,8 @@ shopt -s expand_aliases
 
 readonly script_dir=$(dirname $(realpath "$0"))
 
-readonly VERSION=master-c14-g0ed425b
-readonly VERSION_NPM=1.14.0
+readonly VERSION=master-c15-g4940cb6
+readonly VERSION_NPM=1.15.0
 
 function echomsg      { echo $'\e[0;37m'"$@"$'\e[0m'; }
 # alias echoinfo=echomsg
