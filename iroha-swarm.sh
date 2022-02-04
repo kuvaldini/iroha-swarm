@@ -6,8 +6,8 @@ shopt -s expand_aliases
 
 readonly script_dir=$(dirname $(realpath "$0"))
 
-readonly VERSION=UNKNOWN
-readonly VERSION_NPM=0.0.0
+readonly VERSION=master-c13-g98324e8
+readonly VERSION_NPM=0.13.0
 
 function echomsg      { echo $'\e[0;37m'"$@"$'\e[0m'; }
 # alias echoinfo=echomsg
@@ -65,7 +65,7 @@ var_is_unset_or_empty_multi(){
 }
 
 function --version {
-   echo "git-rev-label v$VERSION_NPM 
+   echo "git-rev-label v$VERSION_NPM
    $VERSION
    https://gitlab.com/kyb/git-rev-label"
 }
@@ -139,7 +139,7 @@ while [[ $# > 0 ]] ;do
          echo 'USAGE:'
          echo "   iroha-swarm [options...]"
          echo 'OPTIONS:'
-         awk '/## CMDLINE OPTIONS BEGIN/{flag=1; next} /## CMDLINE OPTIONS END/{flag=0} flag' "${BASH_SOURCE[0]}" | 
+         awk '/## CMDLINE OPTIONS BEGIN/{flag=1; next} /## CMDLINE OPTIONS END/{flag=0} flag' "${BASH_SOURCE[0]}" |
             sed -nE 's,^\s*([-+]+.*)\).*(##(.*)),   \1 \3,p'
          exit 0
          ;;
@@ -166,8 +166,8 @@ case "$dbtype" in (postgres|rocksdb);; (*) fatalerr "Expected dbtype postgres or
 
 readonly rocksdb_path=${rocksdb_path:-/opt/iroha_rocksdb}
 
-{ var_is_unset_or_empty peers_count && var_is_unset_or_empty peers; } || 
-{ var_is_set_not_empty peers_count && var_is_set_not_empty peers; } && 
+{ var_is_unset_or_empty peers_count && var_is_unset_or_empty peers; } ||
+{ var_is_set_not_empty peers_count && var_is_set_not_empty peers; } &&
    fatalerr "Only one and at least one of --peers or --peers_count or --peers_from must be set."
 
 if test_no use_localhost ;then
@@ -176,13 +176,13 @@ if test_no use_localhost ;then
 fi
 
 readonly PRIV_KEYS=(
-   cc5013e43918bd0e5c4d800416c88bed77892ff077929162bb03ead40a745e88 
+   cc5013e43918bd0e5c4d800416c88bed77892ff077929162bb03ead40a745e88
    f101537e319568c765b2cc89698325604991dca57b9716b58016b253506cab70
    7e65d1c440bc45363f01c4218bf0e65e0d8c1d46a4f5b82b29132d4edce1329c
    f4309e61f735103274854e34375c63436c8b38fa6e74094e6be96c401bfc0f12
 )
 readonly PUB_KEYS=(
-   bddd58404d1315e0eb27902c5d7c8eb0602c16238f005773df406bc191308929 
+   bddd58404d1315e0eb27902c5d7c8eb0602c16238f005773df406bc191308929
    313a07e6384776ed95447710d15e59148473ccfc052a681317a72a69f2a49910
    8da2d43a41008a79206be292a8298315b602591a2b85f74c3c0bbb9372211373
    8f014fa2b7832d25458ae68a541d51a1044f87afc5513967fda16e3728e68f61
@@ -192,7 +192,7 @@ test ${#PUB_KEYS[@]} -eq ${#PRIV_KEYS[@]}
 ## For quick start, if --peers not set, fill peers parameters from prestored keys
 var_is_unset_or_empty peers && {
    test $peers_count -le ${#PUB_KEYS[@]}
-   for (( i=1; i<=$peers_count; ++i )); do 
+   for (( i=1; i<=$peers_count; ++i )); do
       if test_yes use_localhost ;then
          host= #localhost
          port=$((10000+i))
@@ -201,7 +201,7 @@ var_is_unset_or_empty peers && {
          port= #10001
       fi
       peers+=$host:$port:${PUB_KEYS[$((i-1))]}:${PRIV_KEYS[$((i-1))]},
-   done; 
+   done;
 }
 readonly peers_count=${peers_count:=${#PUB_KEYS[@]}}
 
@@ -213,7 +213,7 @@ if test_no use_localhost ;then
          yq e '.x-iroha-base.entrypoint="irohad" |
                .x-iroha-base.command=[ "--genesis_block", "genesis.block", "--config", "config.docker", "--keypair_name", "$KEY"] |
                del(.x-iroha-base.depends_on) |
-               del(.volumes) | 
+               del(.volumes) |
                del(.services.irpsql)' -i docker-compose.yaml
          ;;
       postgres)
@@ -268,24 +268,24 @@ echo "$peers" |
    JSON_peers+="{addPeer:{peer:{address:\"$host:$config_internal_port\",peerKey:\"$pubkey\"}}},"
 
    ## Generate config file for each peer
-   # pgopt="$( cat iroha.base.config | jq -r .pg_opt | 
+   # pgopt="$( cat iroha.base.config | jq -r .pg_opt |
    #    sed -E 's,dbname=[A-Za-z_0-9]+,dbname=$pgopt_dbname,g' )"
-   cat $script_dir/iroha.base.config | 
-      jq ".block_store_path=\"$block_store_path\" | 
-          .torii_port=$config_torii_port | 
-          .internal_port=$config_internal_port | 
+   cat $script_dir/iroha.base.config |
+      jq ".block_store_path=\"$block_store_path\" |
+          .torii_port=$config_torii_port |
+          .internal_port=$config_internal_port |
           .metrics=\"$config_metrics\" |
           if \"rocksdb\" == \"$dbtype\"
-          then .database={type:\"rocksdb\",path:\"$rocksdb_path_\"} | del(.pg_opt) 
+          then .database={type:\"rocksdb\",path:\"$rocksdb_path_\"} | del(.pg_opt)
           else .pg_opt=\"dbname=iroha$i host=$postgres_host port=${postgres_port:=5432} user=postgres password=postgres\"
           end
          " \
       >iroha$i.config
-   
+
    ## Generate docker-compose.yaml (for -docker)
    if test_no use_localhost ;then
       base_internal_port=${base_internal_port:-10000}
-      base_torii_port=${base_torii_port:-50050}; 
+      base_torii_port=${base_torii_port:-50050};
       base_metrics_port=${base_metrics_port:-7000}
       yaml="
          x-workaround: &service_iroha_tech  ## See https://github.com/mikefarah/yq/issues/889#issuecomment-877728821
@@ -334,7 +334,7 @@ fi
 
 ## Remove trailing commas and generate genesis.block with command addPeers
 JSON_peers="$(echo "$JSON_peers" | sed -E 's/,+$//')"
-cat $script_dir/genesis.base.block | 
+cat $script_dir/genesis.base.block |
    jq ".block_v1.payload.transactions[0].payload.reducedPayload.commands += [$JSON_peers]" \
    > genesis.block
 

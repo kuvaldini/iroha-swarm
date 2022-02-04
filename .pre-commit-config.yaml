@@ -1,0 +1,25 @@
+repos:
+- repo: local
+  hooks:
+  - id: git-rev-label
+    name: Set VERSION with git-rev-label
+    entry: bash ./infra/set-version.sh #&& git add iroha-swarm.sh
+    language: system
+    pass_filenames: false
+     #readonly VERSION=
+
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v2.3.0
+  hooks:
+  - id: check-yaml
+  - id: check-json
+    types: [file]  # override `types: [json]`
+    files: \.(json|config|block)$
+    #types_or: ['json']
+  # - id: check-xml
+  - id: check-merge-conflict
+  - id: check-added-large-files
+  - id: end-of-file-fixer
+    exclude: '.*\.patch$'
+  - id: trailing-whitespace
+    exclude: '(.*\.patch$)|git-rev-label.sh'
