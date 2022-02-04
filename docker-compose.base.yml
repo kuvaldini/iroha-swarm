@@ -39,7 +39,7 @@ x-iroha-base: &service_iroha_tech
     - ./iroha-common-config.json:/opt/iroha_data/config.docker
     - ./keys/iroha.tech.001.priv:/opt/iroha_data/iroha.tech.priv
     - ./keys/iroha.tech.001.pub:/opt/iroha_data/iroha.tech.pub
-    - iroha-dev:/opt/iroha
+    # - iroha-dev:/opt/iroha
   depends_on:
     - irpsql
   logging:
@@ -80,6 +80,7 @@ services:
     restart: always
     command: "postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all -c max_connections=200"
 
+  # ## ToDo collect metrics from Iroha nodes
   # metrics:
   #   image: prometheus
   #   ports: 
@@ -90,26 +91,26 @@ services:
   #     - iroha-net
   #   restart: always
 
-  ## To be used as following
+  ## To be used as following for analisys and debug
   ##    docker compose run all-volumes ls -l /tmp/block_store_1/
   # all-volumes:
   #   image: ubuntu
   #   container_name: iroha-volumes
   #   volumes:
   #     - postgres_data:/var/lib/postgresql/data
-  #     - block_strore_1:/tmp/block_store_1
-  #     - block_strore_2:/tmp/block_store_2
-  #     - block_strore_3:/tmp/block_store_3
-  #     - block_strore_4:/tmp/block_store_4
+  #     - block_store_1:/tmp/block_store_1
+  #     - block_store_2:/tmp/block_store_2
+  #     - block_store_3:/tmp/block_store_3
+  #     - block_store_4:/tmp/block_store_4
   #   stdin_open: true # docker run -i
   #   tty: true        # docker run -t
 
 volumes:
   postgres_data:
-  block_strore_1:
-  block_strore_2:
-  block_strore_3:
-  block_strore_4:
-  iroha_prometheus_data:
-  iroha-dev:
-    external: true
+  block_store_1:
+  block_store_2:
+  block_store_3:
+  block_store_4:
+  #iroha_prometheus_data:
+  # iroha-dev:
+  #   external: true

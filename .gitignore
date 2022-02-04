@@ -8,3 +8,6 @@ genesis.block
 docker-compose.yaml
 
 !iroha.base.config
+
+/rocksdb_*/
+/irohad

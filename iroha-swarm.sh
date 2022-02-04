@@ -6,8 +6,8 @@ shopt -s expand_aliases
 
 readonly script_dir=$(dirname $(realpath "$0"))
 
-VERSION=UNKNOWN
-VERSION_NPM=0.0.0
+readonly VERSION=UNKNOWN
+readonly VERSION_NPM=0.0.0
 
 function echomsg      { echo $'\e[0;37m'"$@"$'\e[0m'; }
 # alias echoinfo=echomsg
@@ -64,23 +64,6 @@ var_is_unset_or_empty_multi(){
    done
 }
 
-function --help {
-   echo -n \
-'Produce configuration files to run Hyperledger/Iroha network
-of multiple instances.
-
-USAGE:
-   iroha-swarm.sh [--help|-h|-?]
-   iroha-swarm.sh [--version|-V]
-   iroha-swarm.sh --peers=
-   iroha-swarm.sh [peers_count]   default:4
-
-OPTIONS:
-   --peers_count=N
-   --peers=host1:port1:pubkey1:privkey1,host2:port2:pubkey2:privkey1
-
-'
-}
 function --version {
    echo "git-rev-label v$VERSION_NPM 
    $VERSION
@@ -97,7 +80,7 @@ function --rev-label {
 set_with_warn(){
    local varname=$1
    shift
-   var_is_set $varname  && echowarn "!!! $varname already set to '${!varname}'. Overriding"
+   var_is_set $varname && [[ "${!varname}" != "$@" ]] && echowarn "!!! $varname already set to '${!varname}'. Overriding with '$@'"
    declare -g $varname="$@"
 }
 set_with_warn_from_arg(){
@@ -125,49 +108,71 @@ assert_is_port(){
 
 while [[ $# > 0 ]] ;do
    case $1 in
-      --peers=*)
-         set_with_warn peers "${1##--peers=}" ;;
-      --base_torii_port=*)
+      ## CMDLINE OPTIONS BEGIN
+      -l|--local|--localhost)  ##              Produce config files for LOCAL run, default is docker
+         set_with_warn use_localhost yes ;;
+      --docker)  ##                            Produce config files to run inside DOCKER containers, this is default
+         set_with_warn use_localhost no ;;
+      --peers_count=*)  ##                     Number of peers in Iroha network, keys are taken from embedded example list. JUST FOR A QUICK START.
          set_with_warn_from_arg "$1" ;;
-      --postgres_host=*|--postgres_port=*|--pg_opt=*)
+      --peers=*)  ##                           Define peers in format host1:port1:pubkey1:privkey1,host2:port2:pubkey2:privkey2,...
          set_with_warn_from_arg "$1" ;;
-      -l|--local|--localhost|--no-docker|--without-docker)
-         use_localhost=yes ;;
-      -x|--trace|--xtrace)
+         #set_with_warn peers "${1##--peers=}" ;;
+      --peers_from=*)  ##                      Read --peers from file
+         set_with_warn peers "$(cat ${1##--peers_from=})" ;;  ## to be well tested
+      --rocksdb|--rocks)  ##                   Use database RocksDB
+         set_with_warn dbtype rocksdb ;;
+      --postgres|--postgresdb)  ##             Use database Postgres
+         set_with_warn dbtype postgres ;;
+      --dbtype=*)  ##                          Database type: rocksdb or postrges, default:postgres. Read the docs.
+         set_with_warn dbtype "${1##--dbtype=}" ;;
+      --rocksdb_path=*)  ##                    Path to RocksDB directory
+         set_with_warn_from_arg "$1" ;;
+      --postgres_host=*|--postgres_port=*)  ## Configure PostgresDB, default localhost:5432, see https://iroha.readthedocs.io/en/develop/configure/index.html
+         set_with_warn_from_arg "$1" ;;
+      --base_torii_port=*)  ##                 Base Torii port to access Iroha API, default 50050
+         set_with_warn_from_arg "$1" ;;
+      --help)  ##                              Print this usage message
+         echo "iroha-swarm for hyperledger/iroha"
+         echo 'Produce configuration files to run Hyperledger/Iroha network of multiple instances.'
+         echo "  https://github.com/kuvaldini/iroha-swarm"
+         echo 'USAGE:'
+         echo "   iroha-swarm [options...]"
+         echo 'OPTIONS:'
+         awk '/## CMDLINE OPTIONS BEGIN/{flag=1; next} /## CMDLINE OPTIONS END/{flag=0} flag' "${BASH_SOURCE[0]}" | 
+            sed -nE 's,^\s*([-+]+.*)\).*(##(.*)),   \1 \3,p'
+         exit 0
+         ;;
+      -x|--trace|--xtrace)  ##                 Trace commands as bash -x
          # PS4=$'\e[32m+ '
          set -x ;;
-      +x|--no-trace|--no-xtrace)
+      +x|--no-trace|--no-xtrace)  ##           NOT trace as bash +x
          set +x ;;
-      --debug|-D)  ## Allow echodbg messages, also works if DEBUG is set in environment
-         DEBUG=y ;;
-      --no-debug)  ## Allow echodbg messages, also works if DEBUG is set in environment
-         unset DEBUG ;;
-      --peers_count=*)
-         if var_is_set_not_empty peers
-         then fatalerr "--peers cannot be used with --peers_count"
-         else set_with_warn_from_arg "$1"
-         fi
-         ;;
+      # --debug|-D)  ##                          Enable echodbg messages, also works if DEBUG is set in environment
+      #    DEBUG=y ;;
+      # --no-debug)  ##                          Disable echodbg messages, also works if DEBUG is set in environment
+      #    unset DEBUG ;;
+      ## CMDLINE OPTIONS END
       -*|--*)
          fatalerr "!!! Unknown option '$1'" ;;
       *)
-         if var_is_set_not_empty peers
-         then fatalerr "--peers cannot be used with --peers_count"
-         else set_with_warn peers_count "$1" 
-         fi
-         ;;
+         fatalerr "!!! Unhandled non-option argument '$1'" ;;
    esac
    shift
 done
 
+dbtype=${dbtype:-postgres}
+case "$dbtype" in (postgres|rocksdb);; (*) fatalerr "Expected dbtype postgres or rocksdb. Use --postgres or --rocks.";; esac
+
+readonly rocksdb_path=${rocksdb_path:-/opt/iroha_rocksdb}
+
 { var_is_unset_or_empty peers_count && var_is_unset_or_empty peers; } || 
 { var_is_set_not_empty peers_count && var_is_set_not_empty peers; } && 
-   fatalerr "Only one and at least one of --peers or --peers_count must be set."
+   fatalerr "Only one and at least one of --peers or --peers_count or --peers_from must be set."
 
 if test_no use_localhost ;then
    var_is_set_not_empty postgres_host && echowarn "postgres_host ignored for iroha-swarm in docker"
    var_is_set_not_empty postgres_port && echowarn "postgres_port ignored for iroha-swarm in docker"
-   var_is_set_not_empty pg_opt && echowarn "pg_opt ignored for iroha-swarm in docker"
 fi
 
 readonly PRIV_KEYS=(
@@ -185,7 +190,6 @@ readonly PUB_KEYS=(
 test ${#PUB_KEYS[@]} -eq ${#PRIV_KEYS[@]}
 
 ## For quick start, if --peers not set, fill peers parameters from prestored keys
-# peers_count=${peers_count:=${#PUB_KEYS[@]}}
 var_is_unset_or_empty peers && {
    test $peers_count -le ${#PUB_KEYS[@]}
    for (( i=1; i<=$peers_count; ++i )); do 
@@ -193,29 +197,43 @@ var_is_unset_or_empty peers && {
          host= #localhost
          port=$((10000+i))
       else
-         host=${host:=iroha$i}
+         host=iroha$i
          port= #10001
       fi
       peers+=$host:$port:${PUB_KEYS[$((i-1))]}:${PRIV_KEYS[$((i-1))]},
    done; 
 }
-# readonly peers_count=${peers_count:=${#PUB_KEYS[@]}}
+readonly peers_count=${peers_count:=${#PUB_KEYS[@]}}
 
-## Prepare docker-compose file for future editing
-if ! test_yes use_localhost ;then
+## Prepare docker-compose.yaml
+if test_no use_localhost ;then
    cp $script_dir/docker-compose.base.yml docker-compose.yaml
+   case $dbtype in
+      rocksdb)
+         yq e '.x-iroha-base.entrypoint="irohad" |
+               .x-iroha-base.command=[ "--genesis_block", "genesis.block", "--config", "config.docker", "--keypair_name", "$KEY"] |
+               del(.x-iroha-base.depends_on) |
+               del(.volumes) | 
+               del(.services.irpsql)' -i docker-compose.yaml
+         ;;
+      postgres)
+         yq e 'del(.volumes) | .volumes.postgres_data=null' -i docker-compose.yaml
+         ;;
+   esac
 fi
 
 ## Parse peers and fill files
 peers_out=
 JSON_peers=
-declare -i i=1
+declare -i i=0
 peers="$(echo "$peers" | sed -E 's/,+$//')",
 
 echo "$peers" |
  while IFS=: read -d, host port pubkey privkey rest ;do
    [[ -n "$rest" ]] && fatalerr "Unexpected rest '$rest'"
-   
+
+   ((++i))
+
    ## Keys to files: Validate and write keys to files
    test ${#pubkey}  -eq 64 || fatalerr "Peer's $i pubkey length must be 64, got ${#pubkey} in '$pubkey'"
    test ${#privkey} -eq 64 || fatalerr "Peer's $i privkey length must be 64, got ${#privkey} in '$privkey'"
@@ -232,6 +250,7 @@ echo "$peers" |
       config_torii_port=$((50050+i))
       config_metrics_port=$((7000+i))
       config_metrics="0.0.0.0:$config_metrics_port"
+      rocksdb_path_="${rocksdb_path}_$i"
    else ## docker
       host=${host:=iroha$i}
       postgres_host=irpsql ## Must be same as in docker-compose.yaml
@@ -241,6 +260,7 @@ echo "$peers" |
       config_torii_port=50051
       config_metrics_port=7001
       config_metrics="0.0.0.0:$config_metrics_port"
+      rocksdb_path_="${rocksdb_path}"
    fi
 
    ## genesis.block : add each peer
@@ -251,18 +271,22 @@ echo "$peers" |
    # pgopt="$( cat iroha.base.config | jq -r .pg_opt | 
    #    sed -E 's,dbname=[A-Za-z_0-9]+,dbname=$pgopt_dbname,g' )"
    cat $script_dir/iroha.base.config | 
-      jq ".pg_opt=\"dbname=iroha$i host=$postgres_host port=${postgres_port:=5432} user=postgres password=postgres\" |
-          .block_store_path=\"$block_store_path\" | 
+      jq ".block_store_path=\"$block_store_path\" | 
           .torii_port=$config_torii_port | 
           .internal_port=$config_internal_port | 
-          .metrics=\"$config_metrics\" " \
+          .metrics=\"$config_metrics\" |
+          if \"rocksdb\" == \"$dbtype\"
+          then .database={type:\"rocksdb\",path:\"$rocksdb_path_\"} | del(.pg_opt) 
+          else .pg_opt=\"dbname=iroha$i host=$postgres_host port=${postgres_port:=5432} user=postgres password=postgres\"
+          end
+         " \
       >iroha$i.config
    
-   ## Generate docker-compose.yaml (for not --local)
+   ## Generate docker-compose.yaml (for -docker)
    if test_no use_localhost ;then
       base_internal_port=${base_internal_port:-10000}
       base_torii_port=${base_torii_port:-50050}; 
-      base_metrics_port=${base_metrics_port:-6500}
+      base_metrics_port=${base_metrics_port:-7000}
       yaml="
          x-workaround: &service_iroha_tech  ## See https://github.com/mikefarah/yq/issues/889#issuecomment-877728821
          services:
@@ -270,28 +294,43 @@ echo "$peers" |
                <<: *service_iroha_tech
                container_name: iroha$i
                ports:
-               #- $((base_internal_port+i)):$config_internal_port
+               #- $((base_internal_port+i)):$config_internal_port  ## expose to connect with iroha nodes outside of this docker network and host
                - $((base_torii_port+i)):$config_torii_port
                - $((base_metrics_port+i)):$config_metrics_port  ## Metrics
                volumes:
-               - block_strore_$i:$block_store_path
+               $( [[ $dbtype = postgres ]] && echo "- block_store_$i:$block_store_path")
+               $( [[ $dbtype = rocksdb ]] && echo "- iroha_rocksdb_$i:$rocksdb_path")
                - ./genesis.block:/opt/iroha_data/genesis.block
                - ./iroha$i.config:/opt/iroha_data/config.docker
                - ./iroha$i.priv:/opt/iroha_data/iroha.tech.priv
                - ./iroha$i.pub:/opt/iroha_data/iroha.tech.pub
-               - iroha-dev:/opt/iroha" \
-      yq e 'select(fileIndex == 0) * env(yaml) | del(.x-workaround)' -i docker-compose.yaml
+         $( [[ $dbtype = rocksdb ]]  && echo "volumes: { iroha_rocksdb_$i: }" )
+         $( [[ $dbtype = postgres ]] && echo "volumes: { block_store_$i: }" )
+         " \
+      yq e 'select(fileIndex == 0) * env(yaml) | del(.x-workaround) | .. style|=""' -i docker-compose.yaml
+
+      metrics_ports+=' '$((base_metrics_port+i))
+      torii_ports+=' '$((base_torii_port+i))
+   else
+      metrics_ports+=' '$config_metrics_port
+      torii_ports+=' '$config_torii_port
    fi
-
-   ((++i))
 done
-peers_count=$((i-1))
 
-echo "$peers_count nodes ready to run$(test_no use_localhost && echo ' 'inside containers):"
+echo "$peers_count nodes ready to run$(test_no use_localhost && echo ' 'inside containers || echo ' on localhost'):"
 declare -i i=
 echo "$peers_out" | while IFS=: read -d, host port pubkey privkey rest ;do
    echo "  $((++i)). $host:$port pub=$pubkey priv=$privkey"
 done
+if test_yes use_localhost ;then
+   echo "According to config files"
+   echo "  Metrics will listen at ports: "$metrics_ports
+   echo "  Torii will listen at ports: "$torii_ports
+else
+   echo "According to docker-compose.yaml"
+   echo "  Metrics exposed from docker to local ports: "$metrics_ports
+   echo "  Torii exposed from docker to local ports: "$torii_ports
+fi
 
 ## Remove trailing commas and generate genesis.block with command addPeers
 JSON_peers="$(echo "$JSON_peers" | sed -E 's/,+$//')"
@@ -300,11 +339,13 @@ cat $script_dir/genesis.base.block |
    > genesis.block
 
 if ! test_yes use_localhost ;then
-   echo "Next do:"
+   echo "To run iroha nodes in containers do:"
    echo "   env IROHA_IMAGE=hyperledger/iroha:latest docker-compose up --force-recreate"
 else
    if test "$(realpath "$script_dir")" != "$(realpath .)"
    then cp "$script_dir"/run-irohas.sh ./ ;fi
-   echo "Assert PostgresDB is available to connect via pg_opt. Then:"  ##TRY cat iroha1.config |jq -r .pg_opt | sed -Ee 's,([^ ]+),--\1,g' -e 's,--password.*,,' | xargs psql 'select version()'
+   [[ "$dbtype" == postgres ]] &&
+      echo "Assert PostgresDB is accessable with pg_opt '$(cat iroha1.config |jq -r .pg_opt | sed -Ee 's,([^ ]+),--\1,g' -e 's,--password.*,,' | xargs)'" #| xargs psql 'select version()'
+   echo "To run iroha nodes on current host do:"
    echo "   env IROHAD=/path/to/irohad ./run-irohas.sh $peers_count"
 fi
