@@ -1,7 +1,7 @@
 # version: "2.4"
 
 x-iroha-base: &service_iroha_tech
-  image: ${IROHA_IMAGE} #:-hyperledger/iroha}
+  image: ${IROHA_IMAGE:-hyperledger/iroha}
   # container_name: iroha-base
   ports:
     - 50051:50051  ## TORII port
@@ -9,7 +9,7 @@ x-iroha-base: &service_iroha_tech
     #- 55552:55552  ## Torii TLS port
     #- 9090:9090
     - 5551:5551  ## Metrics
-  expose: 
+  expose:
     - 10001
     - 50051
     - 55552
@@ -39,7 +39,6 @@ x-iroha-base: &service_iroha_tech
     - ./iroha-common-config.json:/opt/iroha_data/config.docker
     - ./keys/iroha.tech.001.priv:/opt/iroha_data/iroha.tech.priv
     - ./keys/iroha.tech.001.pub:/opt/iroha_data/iroha.tech.pub
-    # - iroha-dev:/opt/iroha
   depends_on:
     - irpsql
   logging:
@@ -48,14 +47,12 @@ x-iroha-base: &service_iroha_tech
       max-size: "1000m"
       max-file: "5"
   # restart: always
-  command: "${IROHA_COMMAND}"  ## Taken from file .env  
+  command: "${IROHA_COMMAND}"  ## Taken from file .env
   ## debugging
   ulimits:
     core: -1
   cap_add:
     - SYS_PTRACE
-  # entrypoint: bash
-  # command: ''
 
 services:
   irpsql:
@@ -83,7 +80,7 @@ services:
   # ## ToDo collect metrics from Iroha nodes
   # metrics:
   #   image: prometheus
-  #   ports: 
+  #   ports:
   #     - 8090:8090
   #   volumes:
   #     - iroha_prometheus_data:/opt/data

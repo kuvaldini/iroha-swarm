@@ -6,8 +6,8 @@ shopt -s expand_aliases
 
 readonly script_dir=$(dirname $(realpath "$0"))
 
-readonly VERSION=master-c13-g98324e8
-readonly VERSION_NPM=0.13.0
+readonly VERSION=master-c13-gb0b3f3d
+readonly VERSION_NPM=1.13.0
 
 function echomsg      { echo $'\e[0;37m'"$@"$'\e[0m'; }
 # alias echoinfo=echomsg
@@ -211,7 +211,8 @@ if test_no use_localhost ;then
    case $dbtype in
       rocksdb)
          yq e '.x-iroha-base.entrypoint="irohad" |
-               .x-iroha-base.command=[ "--genesis_block", "genesis.block", "--config", "config.docker", "--keypair_name", "$KEY"] |
+               .x-iroha-base.command="--genesis_block genesis.block --config config.docker --keypair_name iroha.tech" |
+               del(.x-iroha-base.environment.KEY) |
                del(.x-iroha-base.depends_on) |
                del(.volumes) |
                del(.services.irpsql)' -i docker-compose.yaml
